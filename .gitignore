@@ -15,6 +15,9 @@ build/
 # Config (secrets)
 ~/.config/knowledge-distiller/
 
+# Internal dev notes (never upload to GitHub)
+CLAUDE.md
+
 # Test cache
 .pytest_cache/
 .coverage
