@@ -49,7 +49,16 @@ def transcribe(
         - mlx-whisper supports general multilingual transcription.
     """
     if backend == "qwen3-asr":
-        return _transcribe_qwen3_mlx(audio_path, language, model_size, custom_prompt, progress_callback)
+        # M6: check ffmpeg/ffprobe available (needed for chunked path)
+        import shutil as _shutil
+        if not _shutil.which("ffmpeg"):
+            raise RuntimeError("ffmpeg not found. Install: brew install ffmpeg")
+        if not _shutil.which("ffprobe"):
+            raise RuntimeError("ffprobe not found. Install: brew install ffmpeg")
+        # M10: _transcribe_qwen3_mlx_chunked handles both short and long audio
+        return _transcribe_qwen3_mlx_chunked(
+            audio_path, language, model_size, custom_prompt, progress_callback=progress_callback
+        )
     elif backend == "mlx-whisper":
         return _transcribe_mlx_whisper(audio_path, language, model_size, progress_callback)
     else:

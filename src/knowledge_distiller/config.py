@@ -17,7 +17,7 @@ DEFAULTS: dict[str, Any] = {
     "language": None,
     "output_format": "markdown",
     "default_prompt": "",
-    "transcriber": "mlx-whisper",
+    "transcriber": "qwen3-asr",  # M9: align with actual primary backend
     "cache_dir": str(Path.home() / ".cache" / "knowledge-distiller"),
 }
 
@@ -59,8 +59,11 @@ def set_value(key: str, value: str) -> None:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     cfg = _load_file()
     cfg[key] = value
+    # C1: ensure owner-only permissions (0o600) so plaintext fallback is protected
+    CONFIG_FILE.touch(mode=0o600, exist_ok=True)
     with open(CONFIG_FILE, "w") as f:
         toml.dump(cfg, f)
+    CONFIG_FILE.chmod(0o600)  # enforce after write (umask may override touch)
 
 
 def get_api_key(provider: str | None = None) -> str | None:
@@ -85,7 +88,9 @@ def get_api_key(provider: str | None = None) -> str | None:
     except Exception:
         pass
 
-    return _load_file().get("api_key")
+    # M1: read provider-specific key first, then legacy generic key
+    cfg = _load_file()
+    return cfg.get(f"{p}_api_key") or cfg.get("api_key")
 
 
 def save_api_key(provider: str, api_key: str) -> None:

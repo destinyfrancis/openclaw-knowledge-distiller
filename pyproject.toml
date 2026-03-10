@@ -21,7 +21,6 @@ dependencies = [
     "mcp>=1.0",
     "toml>=0.10",
     "keyring>=25.0",
-    "aiofiles>=23.0",
     "qwen-asr>=0.0.6",
 ]
 

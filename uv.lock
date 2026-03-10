@@ -2250,10 +2250,9 @@ wheels = [
 
 [[package]]
 name = "openclaw-knowledge-distiller"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
-    { name = "aiofiles" },
     { name = "httpx" },
     { name = "keyring" },
     { name = "mcp" },
@@ -2278,7 +2277,6 @@ whisper = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiofiles", specifier = ">=23.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "keyring", specifier = ">=25.0" },
     { name = "mcp", specifier = ">=1.0" },

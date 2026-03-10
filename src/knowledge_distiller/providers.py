@@ -39,7 +39,7 @@ class GoogleProvider:
             data = resp.json()
         candidates = data.get("candidates", [])
         if not candidates:
-            raise RuntimeError(f"Empty response from Google AI: {data}")
+            raise RuntimeError("Empty response from Google AI (no candidates returned)")
         return candidates[0]["content"]["parts"][0]["text"]
 
 

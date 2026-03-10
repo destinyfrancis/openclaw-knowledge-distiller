@@ -267,7 +267,11 @@ def _split_into_chunks(text: str, max_size: int = CHUNK_SIZE) -> list[str]:
 
 
 def _extract_json(text: str) -> dict:
-    """Extract JSON object from LLM response, handling markdown code fences."""
+    """Extract JSON object from LLM response, handling markdown code fences.
+
+    H6: Returns a fallback dict on JSONDecodeError rather than crashing.
+    """
+    original = text
     text = text.strip()
     # Remove markdown code fences
     text = re.sub(r"^```(?:json)?\s*", "", text)
@@ -278,7 +282,15 @@ def _extract_json(text: str) -> dict:
     end = text.rfind("}")
     if start != -1 and end != -1:
         text = text[start : end + 1]
-    return json.loads(text)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Graceful degradation — preserve raw LLM output as transcript
+        return {
+            "one_sentence": "(Summary parsing failed — see full_transcript for raw AI output)",
+            "key_points": [],
+            "full_transcript": original,
+        }
 
 
 async def generate_summary(

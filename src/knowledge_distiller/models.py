@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, HttpUrl, field_validator
+from pydantic import BaseModel, Field
 
 
 class VideoMetadata(BaseModel):
@@ -27,11 +27,7 @@ class ArticleSummary(BaseModel):
     source_url: str
     video_title: str | None = None
     language: str | None = None
-    generated_at: datetime = None  # type: ignore[assignment]
-
-    def model_post_init(self, __context: object) -> None:
-        if self.generated_at is None:
-            self.generated_at = datetime.now()
+    generated_at: datetime = Field(default_factory=datetime.now)
 
     def to_markdown(self) -> str:
         lines = []
@@ -56,8 +52,4 @@ class ProcessingStatus(BaseModel):
     error: str | None = None
     result: ArticleSummary | None = None
     url: str = ""
-    created_at: datetime = None  # type: ignore[assignment]
-
-    def model_post_init(self, __context: object) -> None:
-        if self.created_at is None:
-            self.created_at = datetime.now()
+    created_at: datetime = Field(default_factory=datetime.now)

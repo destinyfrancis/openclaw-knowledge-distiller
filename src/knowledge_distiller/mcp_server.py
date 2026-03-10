@@ -18,20 +18,51 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
+import re
+import shutil
 import uuid
+from collections import OrderedDict
 from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.types import TextContent, Tool
 
 from . import config, downloader, subtitle_extractor, transcriber
-from .models import ProcessingStatus, ArticleSummary
+from .models import ArticleSummary, ProcessingStatus
 from .providers import build_provider
-from .summarizer import generate_summary, PROMPT_STYLES
+from .summarizer import PROMPT_STYLES, generate_summary
 
-# In-memory job store (keyed by job_id)
-_jobs: dict[str, ProcessingStatus] = {}
+logger = logging.getLogger(__name__)
+
+# In-memory job store (keyed by job_id) — bounded to prevent unbounded memory growth
+_MAX_JOBS = 100
+
+class _BoundedJobStore(OrderedDict):
+    def __setitem__(self, key: str, value: ProcessingStatus) -> None:
+        super().__setitem__(key, value)
+        while len(self) > _MAX_JOBS:
+            self.popitem(last=False)  # evict oldest
+
+_jobs: _BoundedJobStore = _BoundedJobStore()
+
+# URL allowlist — C3: prevent SSRF via yt-dlp's broad extractor support
+_ALLOWED_HOSTS = re.compile(
+    r"^(www\.)?(youtube\.com|youtu\.be|yt\.be|bilibili\.com|b23\.tv)$",
+    re.IGNORECASE,
+)
+
+def _validate_url(url: str) -> None:
+    """Raise ValueError if url is not an allowed YouTube/Bilibili URL."""
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Only http/https URLs are allowed (got: {parsed.scheme!r})")
+    if not parsed.netloc or not _ALLOWED_HOSTS.match(parsed.netloc):
+        raise ValueError(
+            f"Unsupported platform: {parsed.netloc!r}. Only YouTube and Bilibili are supported."
+        )
 
 server = Server("openclaw-knowledge-distiller")
 
@@ -178,13 +209,17 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="configure",
-            description="Update knowledge-distiller configuration (for process_url mode).",
+            description=(
+                "Update knowledge-distiller configuration (for process_url mode). "
+                "API keys cannot be set via MCP — use the CLI: kd config set api-key <key>, "
+                "or set environment variables: "
+                "KD_API_KEY / GOOGLE_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
                     "provider": {"type": "string", "description": "AI provider: google|openai|anthropic"},
                     "model": {"type": "string", "description": "AI model name"},
-                    "api_key": {"type": "string", "description": "API key for the current provider"},
                     "default_prompt": {"type": "string", "description": "Default summarization prompt"},
                     "language": {"type": "string", "description": "Default language code"},
                 },
@@ -232,7 +267,12 @@ async def _handle_transcribe_url(args: dict[str, Any]) -> list[TextContent]:
     style_key = args.get("style") or "standard"
     style = PROMPT_STYLES.get(style_key, PROMPT_STYLES["standard"])
 
+    audio_dir = None  # track temp dir for cleanup in finally
+
     try:
+        # C3: Validate URL before passing to yt-dlp
+        _validate_url(url)
+
         # Step 1: metadata
         meta = downloader.fetch_metadata(url)
 
@@ -252,6 +292,7 @@ async def _handle_transcribe_url(args: dict[str, Any]) -> list[TextContent]:
         # Step 3: local ASR (Qwen3-ASR MLX) — no API key needed
         if transcript is None:
             audio_path = await asyncio.to_thread(downloader.download_audio, url)
+            audio_dir = audio_path.parent  # track for cleanup
             backend = str(config.get("transcriber", "qwen3-asr"))
             transcript = await asyncio.to_thread(
                 transcriber.transcribe,
@@ -284,16 +325,38 @@ async def _handle_transcribe_url(args: dict[str, Any]) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps(data, ensure_ascii=False, indent=2))]
 
     except Exception as e:
-        return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
+        logger.exception("transcribe_url failed for url=%s", url)
+        return [TextContent(type="text", text=json.dumps({
+            "status": "error",
+            "error": f"Transcription failed: {type(e).__name__}: {e}",
+        }))]
+    finally:
+        # H1: Clean up temp audio directory
+        if audio_dir is not None:
+            shutil.rmtree(audio_dir, ignore_errors=True)
 
 
 # ─── process_url: async job queue (external AI summarization) ──────────────────
 
 async def _handle_process_url(args: dict[str, Any]) -> list[TextContent]:
-    job_id = str(uuid.uuid4())[:8]
-    status = ProcessingStatus(job_id=job_id, status="queued", url=args["url"])
+    url = args["url"]
+    try:
+        _validate_url(url)  # C3: validate before queuing
+    except ValueError as e:
+        return [TextContent(type="text", text=json.dumps({"status": "error", "error": str(e)}))]
+
+    job_id = str(uuid.uuid4())[:12]  # M5: 12 chars for better entropy
+    status = ProcessingStatus(job_id=job_id, status="queued", url=url)
     _jobs[job_id] = status
-    asyncio.create_task(_run_job(job_id, args))
+
+    # H3: add done callback so unexpected exceptions are logged (not silently dropped)
+    def _on_done(task: asyncio.Task) -> None:
+        if not task.cancelled() and (exc := task.exception()):
+            logger.exception("Background job %s raised unexpected error", job_id, exc_info=exc)
+
+    task = asyncio.create_task(_run_job(job_id, args))
+    task.add_done_callback(_on_done)
+
     return [TextContent(type="text", text=json.dumps({"job_id": job_id, "status": "queued"}))]
 
 
@@ -316,6 +379,8 @@ async def _run_job(job_id: str, args: dict[str, Any]) -> None:
         no_summary = True
         job.phase_message = "No API key — transcript-only mode (use transcribe_url for agent summarization)"
 
+    audio_dir = None  # track for cleanup
+
     try:
         job.status = "downloading"
         job.phase_message = "Fetching metadata..."
@@ -328,13 +393,17 @@ async def _run_job(job_id: str, args: dict[str, Any]) -> None:
             job.status = "extracting_subtitles"
             job.phase_message = "Extracting subtitles..."
             job.progress = 0.2
-            transcript = subtitle_extractor.extract_subtitles(url, str(language) if language else None)
+            # H4: was blocking, now properly off the event loop
+            transcript = await asyncio.to_thread(
+                subtitle_extractor.extract_subtitles, url, str(language) if language else None
+            )
 
         if transcript is None:
             job.status = "downloading"
             job.phase_message = "Downloading audio..."
             job.progress = 0.15
             audio_path = await asyncio.to_thread(downloader.download_audio, url)
+            audio_dir = audio_path.parent  # H1: track for cleanup
 
             job.status = "transcribing"
             job.phase_message = "Transcribing with Qwen3-ASR MLX..."
@@ -382,9 +451,15 @@ async def _run_job(job_id: str, args: dict[str, Any]) -> None:
         job.result = summary
 
     except Exception as e:
+        logger.exception("Job %s failed", job_id)
         job.status = "failed"
-        job.error = str(e)
+        job.error = f"{type(e).__name__}: {e}"  # H5: type prefix, no raw data leak
         job.progress = 0.0
+
+    finally:
+        # H1: clean up temp audio directory
+        if audio_dir is not None:
+            shutil.rmtree(audio_dir, ignore_errors=True)
 
 
 # ─── Remaining handlers ────────────────────────────────────────────────────────
@@ -468,19 +543,31 @@ def _handle_list_jobs() -> list[TextContent]:
 _ALLOWED_CONFIG_KEYS = {"provider", "model", "default_prompt", "language", "transcriber"}
 
 def _handle_configure(args: dict[str, Any]) -> list[TextContent]:
+    # C2: API keys must not be sent over MCP stdio (risk of logging by calling agent)
+    if "api_key" in args:
+        return [TextContent(type="text", text=json.dumps({
+            "ok": False,
+            "error": (
+                "API keys cannot be set via MCP (risk of logging by the agent). "
+                "Use the CLI: kd config set api-key <key>  "
+                "or set environment variables: "
+                "KD_API_KEY / GOOGLE_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY"
+            ),
+        }))]
+
     rejected = []
     for key, value in args.items():
-        if key == "api_key":
-            provider = str(config.get("provider", "google"))
-            config.save_api_key(provider, str(value))
-        elif key in _ALLOWED_CONFIG_KEYS:
+        if key in _ALLOWED_CONFIG_KEYS:
             config.set_value(key, str(value))
         else:
             rejected.append(key)
     if rejected:
         return [TextContent(type="text", text=json.dumps({
             "ok": False,
-            "error": f"Unknown config keys rejected: {rejected}. Allowed: {sorted(_ALLOWED_CONFIG_KEYS)}",
+            "error": (
+                f"Unknown config keys rejected: {rejected}. "
+                f"Allowed: {sorted(_ALLOWED_CONFIG_KEYS)}"
+            ),
         }))]
     return [TextContent(type="text", text='{"ok": true, "message": "Configuration updated"}')]
 
