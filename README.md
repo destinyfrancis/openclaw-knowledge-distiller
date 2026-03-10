@@ -1,4 +1,5 @@
-# Knowledge Distiller 🎬→📚
+# Open CLAW Knowledge Distiller 🦞📚
+### 龍蝦知識蒸餾器
 
 **English** · [繁體中文](#繁體中文)
 
@@ -9,9 +10,9 @@
 
 ## English
 
-### What is Knowledge Distiller?
+### What is Open CLAW Knowledge Distiller?
 
-Knowledge Distiller (`kd`) is an open-source CLI tool and MCP server that converts YouTube and Bilibili videos into structured knowledge articles — automatically.
+Open CLAW Knowledge Distiller（**龍蝦知識蒸餾器**，`kd`）is an open-source CLI tool and MCP server built for the [Open CLAW](https://github.com/destinyfrancis) AI agent ecosystem. It converts YouTube and Bilibili videos into structured knowledge articles — automatically, locally, and for free.
 
 **How it works:**
 1. If the video has subtitles → extracts them directly (no transcription needed, faster)
@@ -238,9 +239,9 @@ export KD_LANGUAGE=zh
 
 [Back to English](#english)
 
-### 什麼是 Knowledge Distiller？
+### 什麼是龍蝦知識蒸餾器？
 
-Knowledge Distiller（`kd`）係一個開源命令行工具同 MCP 伺服器，可以自動將 YouTube 同 Bilibili 影片轉化為結構化知識文章。
+**Open CLAW Knowledge Distiller**（龍蝦知識蒸餾器，`kd`）係一個專為 Open CLAW（龍蝦）AI agent 生態系統而設計的開源命令行工具同 MCP 伺服器，可以自動將 YouTube 同 Bilibili 影片轉化為結構化知識文章。
 
 **處理流程：**
 1. 若影片有字幕 → 直接提取（無需 ASR 轉錄，速度更快）
@@ -402,6 +403,31 @@ Agent → get_result(job_id="a1b2c3d4", format="summary")
 
 ---
 
+## Acknowledgements · 致謝
+
+This project stands on the shoulders of remarkable open-source work. We are deeply grateful to the following teams and individuals:
+
+| Project | Authors | Contribution |
+|---------|---------|-------------|
+| **[Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)** | Alibaba Qwen Team 阿里巴巴 Qwen 團隊 | The core ASR model powering local transcription. World-class multilingual speech recognition including Cantonese, Mandarin, and 50+ languages. |
+| **[Apple MLX](https://github.com/ml-explore/mlx)** | Apple Machine Learning Research | The on-device ML framework enabling Qwen3-ASR to run efficiently on Apple Silicon. |
+| **[mlx-community](https://huggingface.co/mlx-community)** | MLX Community Contributors | Quantized MLX model weights hosted on Hugging Face, making local inference accessible. |
+| **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** | yt-dlp contributors | Robust YouTube and Bilibili audio download and subtitle extraction without requiring any API key. |
+| **[mlx-whisper](https://github.com/ml-explore/mlx-examples)** | Apple MLX Examples Team | Alternative Apple Silicon ASR backend using OpenAI's Whisper architecture. |
+| **[Pydantic](https://github.com/pydantic/pydantic)** | Samuel Colvin & contributors | Data validation and modelling powering all internal data structures. |
+| **[Typer](https://github.com/tiangolo/typer)** | Sebastián Ramírez (tiangolo) | The elegant CLI framework behind the `kd` command interface. |
+| **[Rich](https://github.com/Textualize/rich)** | Will McGugan & Textualize | Beautiful terminal output, progress bars, and formatted tables. |
+| **[MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)** | Anthropic & MCP contributors | The Model Context Protocol SDK enabling Claude Code / Open CLAW agent integration. |
+| **[httpx](https://github.com/encode/httpx)** | Tom Christie & encode | Async HTTP client powering AI provider API calls. |
+
+---
+
+特別感謝 **阿里巴巴 Qwen 團隊**開發並開源 Qwen3-ASR 模型，令本地、免費、高精度的粵語及多語言轉錄成為可能。
+
+Special thanks to the **Alibaba Qwen Team** for developing and open-sourcing the Qwen3-ASR model, making high-accuracy local speech recognition in Cantonese and 50+ languages possible without any cloud cost.
+
+---
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or submit a pull request.
@@ -420,4 +446,4 @@ MIT © 2026 [destinyfrancis](https://github.com/destinyfrancis)
 
 ---
 
-*Powered by [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) · [yt-dlp](https://github.com/yt-dlp/yt-dlp) · [Apple MLX](https://github.com/ml-explore/mlx)*
+*Powered by [Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR) · [yt-dlp](https://github.com/yt-dlp/yt-dlp) · [Apple MLX](https://github.com/ml-explore/mlx) · [MCP](https://github.com/modelcontextprotocol/python-sdk)*

@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "knowledge-distiller"
+name = "openclaw-knowledge-distiller"
 version = "0.1.0"
-description = "Distill YouTube/Bilibili videos into structured knowledge articles via ASR + AI summarization"
+description = "Open CLAW Knowledge Distiller · 龍蝦知識蒸餾器 — Turn YouTube/Bilibili videos into structured knowledge articles via local Qwen3-ASR + AI summarization"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-keywords = ["asr", "transcription", "summarization", "youtube", "bilibili", "mcp"]
-authors = [{ name = "Francis Tam" }]
+keywords = ["asr", "transcription", "summarization", "youtube", "bilibili", "mcp", "open-claw", "qwen3-asr", "knowledge-distiller"]
+authors = [{ name = "Francis Tam", email = "destinyfrancis@github.com" }]
 
 dependencies = [
     "yt-dlp>=2024.1.0",
