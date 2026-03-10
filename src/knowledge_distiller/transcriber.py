@@ -90,7 +90,7 @@ def _transcribe_qwen3_mlx(
         progress_callback(0.3, "Transcribing with Qwen3-ASR...")
 
     lang_code = language or "auto"
-    result = model.transcribe(
+    results = model.transcribe(
         audio=str(audio_path),
         language=lang_code,
         context=custom_prompt,
@@ -99,7 +99,10 @@ def _transcribe_qwen3_mlx(
     if progress_callback:
         progress_callback(1.0, "Transcription complete")
 
-    return result.strip() if isinstance(result, str) else result.get("text", "").strip()
+    # results is List[ASRTranscription]; each has .text attribute
+    if not results:
+        return ""
+    return results[0].text.strip()
 
 
 def _transcribe_qwen3_mlx_chunked(
@@ -152,8 +155,8 @@ def _transcribe_qwen3_mlx_chunked(
                 progress_callback(0.1 + 0.8 * i / len(chunks), f"Chunk {i+1}/{len(chunks)}...")
 
             lang_code = language or "auto"
-            result = model.transcribe(audio=str(chunk_path), language=lang_code, context=custom_prompt)
-            chunk_text = result.strip() if isinstance(result, str) else result.get("text", "")
+            results = model.transcribe(audio=str(chunk_path), language=lang_code, context=custom_prompt)
+            chunk_text = results[0].text.strip() if results else ""
             texts.append(chunk_text)
 
     if progress_callback:

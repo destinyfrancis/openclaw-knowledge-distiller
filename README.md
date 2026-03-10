@@ -50,8 +50,8 @@ pip install qwen-asr         # local Qwen3-ASR (Apple Silicon)
 
 **Install from source:**
 ```bash
-git clone https://github.com/destinyfrancis/knowledge-distiller.git
-cd knowledge-distiller
+git clone https://github.com/destinyfrancis/openclaw-knowledge-distiller.git
+cd openclaw-knowledge-distiller
 pip install -e .
 # or with uv:
 uv sync
@@ -277,8 +277,8 @@ brew install ffmpeg
 pip install qwen-asr
 
 # 從 GitHub 安裝
-git clone https://github.com/destinyfrancis/knowledge-distiller.git
-cd knowledge-distiller
+git clone https://github.com/destinyfrancis/openclaw-knowledge-distiller.git
+cd openclaw-knowledge-distiller
 pip install -e .
 # 或使用 uv：
 uv sync
