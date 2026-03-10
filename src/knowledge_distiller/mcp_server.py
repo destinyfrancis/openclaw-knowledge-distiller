@@ -414,7 +414,8 @@ def _handle_get_result(args: dict[str, Any]) -> list[TextContent]:
     if job.status != "completed":
         return [TextContent(type="text", text=json.dumps({"status": job.status, "error": job.error}))]
     summary = job.result
-    assert summary is not None
+    if summary is None:
+        return [TextContent(type="text", text=json.dumps({"error": "Job completed but result is missing"}))]
     match fmt:
         case "summary":
             data: Any = {"one_sentence": summary.one_sentence, "key_points": summary.key_points}
@@ -464,13 +465,23 @@ def _handle_list_jobs() -> list[TextContent]:
     return [TextContent(type="text", text=json.dumps(jobs_list, ensure_ascii=False, indent=2))]
 
 
+_ALLOWED_CONFIG_KEYS = {"provider", "model", "default_prompt", "language", "transcriber"}
+
 def _handle_configure(args: dict[str, Any]) -> list[TextContent]:
+    rejected = []
     for key, value in args.items():
         if key == "api_key":
             provider = str(config.get("provider", "google"))
             config.save_api_key(provider, str(value))
-        else:
+        elif key in _ALLOWED_CONFIG_KEYS:
             config.set_value(key, str(value))
+        else:
+            rejected.append(key)
+    if rejected:
+        return [TextContent(type="text", text=json.dumps({
+            "ok": False,
+            "error": f"Unknown config keys rejected: {rejected}. Allowed: {sorted(_ALLOWED_CONFIG_KEYS)}",
+        }))]
     return [TextContent(type="text", text='{"ok": true, "message": "Configuration updated"}')]
 
 

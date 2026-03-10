@@ -36,7 +36,9 @@ def _load_file() -> dict[str, Any]:
         return {}
     try:
         return toml.load(CONFIG_FILE)
-    except Exception:
+    except toml.TomlDecodeError as e:
+        import warnings
+        warnings.warn(f"Config file {CONFIG_FILE} is malformed and will be ignored: {e}", stacklevel=3)
         return {}
 
 
@@ -90,6 +92,11 @@ def save_api_key(provider: str, api_key: str) -> None:
     try:
         import keyring
         keyring.set_password("knowledge-distiller", f"{provider}_api_key", api_key)
-    except Exception:
-        # Fallback: save to config file (less secure)
-        set_value("api_key", api_key)
+    except Exception as e:
+        import warnings
+        warnings.warn(
+            f"keyring unavailable ({e}) — writing API key to plaintext config file {CONFIG_FILE}. "
+            "Consider installing a keyring backend for secure storage.",
+            stacklevel=2,
+        )
+        set_value(f"{provider}_api_key", api_key)

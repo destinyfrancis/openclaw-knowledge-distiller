@@ -132,10 +132,12 @@ async def _process(
                     progress.update(task2, description="[green]✓[/green] Subtitles extracted (skipping ASR)", completed=1, total=1)
                 else:
                     progress.update(task2, description="[yellow]![/yellow] No usable subtitles, falling back to ASR", completed=1, total=1)
-            except Exception:
+            except Exception as e:
+                console.print(f"[dim]Subtitle extraction failed ({e}) — falling back to ASR[/dim]")
                 transcript = None
 
         if transcript is None:
+            import shutil
             task3 = progress.add_task("Downloading audio...", total=1.0)
 
             def dl_progress(p: float) -> None:
@@ -168,6 +170,9 @@ async def _process(
                 progress.stop()
                 console.print(f"[red]Error transcribing:[/red] {e}")
                 raise typer.Exit(1)
+            finally:
+                # Clean up downloaded audio temp dir
+                shutil.rmtree(audio_path.parent, ignore_errors=True)
 
         # Step 3: Summarize (optional — requires AI API key)
         summary = None

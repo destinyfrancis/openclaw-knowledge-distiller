@@ -166,24 +166,33 @@ def _transcribe_qwen3_mlx_chunked(
 
 
 def _get_audio_duration(path: Path) -> float | None:
+    import json as _json
     try:
         result = subprocess.run(
             ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", str(path)],
             capture_output=True, text=True, timeout=10,
         )
-        import json
-        data = json.loads(result.stdout)
+        data = _json.loads(result.stdout)
         return float(data["format"]["duration"])
+    except subprocess.TimeoutExpired:
+        import warnings
+        warnings.warn(f"ffprobe timed out probing {path} — treating as short audio", stacklevel=2)
+        return None
     except Exception:
         return None
 
 
 def _extract_chunk(src: Path, dest: Path, start: float, end: float) -> None:
-    subprocess.run(
+    result = subprocess.run(
         ["ffmpeg", "-y", "-i", str(src), "-ss", str(start), "-to", str(end),
          "-ar", "16000", "-ac", "1", "-f", "wav", str(dest)],
         capture_output=True, timeout=120,
     )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"ffmpeg failed extracting chunk {start:.1f}s-{end:.1f}s "
+            f"(exit {result.returncode}): {result.stderr.decode(errors='replace')[:200]}"
+        )
 
 
 # ─── mlx-whisper (fallback, no API key needed) ────────────────────────────────

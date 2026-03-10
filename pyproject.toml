@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "openclaw-knowledge-distiller"
-version = "0.1.1"
+version = "0.1.2"
 description = "Open CLAW Knowledge Distiller · 龍蝦知識蒸餾器 — Turn YouTube/Bilibili videos into structured knowledge articles via local Qwen3-ASR + AI summarization"
 readme = "README.md"
 requires-python = ">=3.11"
