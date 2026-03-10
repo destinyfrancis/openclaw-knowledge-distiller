@@ -3,8 +3,8 @@
 
 **English** · [繁體中文](#繁體中文) · [简体中文](#简体中文)
 
-> Turn YouTube/Bilibili videos into structured knowledge articles in seconds — locally, for free.
-> 秒速将 YouTube/Bilibili 视频转化为结构化知识文章 — 本地运行，完全免费。
+> Turn YouTube, Bilibili, and Facebook videos into structured knowledge articles in seconds — locally, for free.
+> 秒速将 YouTube、Bilibili、Facebook 视频转化为结构化知识文章 — 本地运行，完全免费。
 
 ---
 
@@ -12,7 +12,7 @@
 
 ### What is Open CLAW Knowledge Distiller?
 
-Open CLAW Knowledge Distiller（**龍蝦知識蒸餾器**，`kd`）is an open-source CLI tool and MCP server built for the [Open CLAW](https://github.com/destinyfrancis) AI agent ecosystem. It converts YouTube and Bilibili videos into structured knowledge articles — automatically, locally, and for free.
+Open CLAW Knowledge Distiller（**龍蝦知識蒸餾器**，`kd`）is an open-source CLI tool and MCP server built for the [Open CLAW](https://github.com/destinyfrancis) AI agent ecosystem. It converts YouTube, Bilibili, and Facebook videos into structured knowledge articles — automatically, locally, and for free.
 
 **How it works:**
 1. If the video has subtitles → extracts them directly (no transcription needed, faster)
@@ -247,7 +247,7 @@ export KD_LANGUAGE=zh
 
 ### 什麼是龍蝦知識蒸餾器？
 
-**Open CLAW Knowledge Distiller**（龍蝦知識蒸餾器，`kd`）係一個專為 Open CLAW（龍蝦）AI agent 生態系統而設計的開源命令行工具同 MCP 伺服器，可以自動將 YouTube 同 Bilibili 影片轉化為結構化知識文章。
+**Open CLAW Knowledge Distiller**（龍蝦知識蒸餾器，`kd`）係一個專為 Open CLAW（龍蝦）AI agent 生態系統而設計的開源命令行工具同 MCP 伺服器，可以自動將 YouTube、Bilibili 同 Facebook 影片轉化為結構化知識文章。
 
 **處理流程：**
 1. 若影片有字幕 → 直接提取（無需 ASR 轉錄，速度更快）
@@ -421,7 +421,7 @@ Agent → get_result(job_id="a1b2c3d4", format="summary")
 
 ### 什么是龙虾知识蒸馏器？
 
-**Open CLAW Knowledge Distiller**（龙虾知识蒸馏器，`kd`）是一款专为 Open CLAW AI 智能体生态系统设计的开源命令行工具和 MCP 服务器。它能自动将 YouTube 和 Bilibili 视频转化为结构化知识文章，完全本地运行，无需任何云端费用。
+**Open CLAW Knowledge Distiller**（龙虾知识蒸馏器，`kd`）是一款专为 Open CLAW AI 智能体生态系统设计的开源命令行工具和 MCP 服务器。它能自动将 YouTube、Bilibili 和 Facebook 视频转化为结构化知识文章，完全本地运行，无需任何云端费用。
 
 **工作流程：**
 1. 若视频有字幕 → 直接提取（最快，无需转录）
@@ -622,7 +622,7 @@ This project stands on the shoulders of remarkable open-source work. We are deep
 | **[Qwen3-ASR](https://github.com/QwenLM/Qwen3-ASR)** | Alibaba Qwen Team 阿里巴巴 Qwen 團隊 | The core ASR model powering local transcription. World-class multilingual speech recognition including Cantonese, Mandarin, and 50+ languages. |
 | **[Apple MLX](https://github.com/ml-explore/mlx)** | Apple Machine Learning Research | The on-device ML framework enabling Qwen3-ASR to run efficiently on Apple Silicon. |
 | **[mlx-community](https://huggingface.co/mlx-community)** | MLX Community Contributors | Quantized MLX model weights hosted on Hugging Face, making local inference accessible. |
-| **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** | yt-dlp contributors | Robust YouTube and Bilibili audio download and subtitle extraction without requiring any API key. |
+| **[yt-dlp](https://github.com/yt-dlp/yt-dlp)** | yt-dlp contributors | Robust YouTube, Bilibili, and Facebook audio download and subtitle extraction without requiring any API key. |
 | **[mlx-whisper](https://github.com/ml-explore/mlx-examples)** | Apple MLX Examples Team | Alternative Apple Silicon ASR backend using OpenAI's Whisper architecture. |
 | **[Pydantic](https://github.com/pydantic/pydantic)** | Samuel Colvin & contributors | Data validation and modelling powering all internal data structures. |
 | **[Typer](https://github.com/tiangolo/typer)** | Sebastián Ramírez (tiangolo) | The elegant CLI framework behind the `kd` command interface. |
@@ -632,9 +632,9 @@ This project stands on the shoulders of remarkable open-source work. We are deep
 
 ---
 
-特別感謝 **阿里巴巴 Qwen 團隊**開發並開源 Qwen3-ASR 模型，令本地、免費、高精度的粵語及多語言轉錄成為可能。
+特別感謝 **阿里巴巴 Qwen 團隊**開發並開源 Qwen3-ASR 模型，令本地、免費、高精度的粵語及多語言轉錄成為可能。同時感謝 **yt-dlp 團隊**提供強大的音頻下載同字幕提取功能，支援 YouTube、Bilibili 同 Facebook 影片。
 
-Special thanks to the **Alibaba Qwen Team** for developing and open-sourcing the Qwen3-ASR model, making high-accuracy local speech recognition in Cantonese and 50+ languages possible without any cloud cost.
+Special thanks to the **Alibaba Qwen Team** for developing and open-sourcing the Qwen3-ASR model, making high-accuracy local speech recognition in Cantonese and 50+ languages possible without any cloud cost. Also grateful to the **yt-dlp community** for robust audio download and subtitle extraction supporting YouTube, Bilibili, and Facebook videos.
 
 ---
 
