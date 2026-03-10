@@ -476,9 +476,23 @@ kd styles
 
 ---
 
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
+### Contributors
+
+<!-- ALL-CONTRIBUTORS-LIST:START -->
+| Avatar | Name | Role |
+|--------|------|------|
+| <img src="https://github.com/destinyfrancis.png" width="40" height="40" style="border-radius:50%"> | **[destinyfrancis](https://github.com/destinyfrancis)** | Creator & Maintainer |
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+---
+
 ## License
 
-MIT © 2026 Francis Tam
+MIT © 2026 [destinyfrancis](https://github.com/destinyfrancis)
 
 ---
 
