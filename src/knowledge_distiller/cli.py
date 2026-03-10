@@ -16,7 +16,7 @@ from rich.table import Table
 from . import config, downloader, subtitle_extractor, transcriber
 from .models import ArticleSummary
 from .providers import build_provider
-from .summarizer import generate_summary
+from .summarizer import generate_summary, PROMPT_STYLES
 
 app = typer.Typer(
     name="kd",
@@ -34,7 +34,8 @@ def process(
     language: Annotated[Optional[str], typer.Option("--language", "-l", help="Language code: zh, yue (粵語), en, ja, ko...")] = None,
     provider: Annotated[Optional[str], typer.Option("--provider", "-p", help="AI provider: google|openai|anthropic (for summary)")] = None,
     model: Annotated[Optional[str], typer.Option("--model", "-m", help="AI model name")] = None,
-    prompt: Annotated[Optional[str], typer.Option("--prompt", help="Custom summary prompt")] = None,
+    prompt: Annotated[Optional[str], typer.Option("--prompt", help="Custom summary prompt (overrides --style)")] = None,
+    style: Annotated[Optional[str], typer.Option("--style", "-s", help="Summary style: standard|academic|actions|news|investment|podcast|eli5|bullets")] = None,
     output: Annotated[Optional[Path], typer.Option("--output", "-o", help="Output file path")] = None,
     output_format: Annotated[str, typer.Option("--format", "-f", help="Output format: markdown|json|text")] = "markdown",
     no_subtitles: Annotated[bool, typer.Option("--no-subtitles", help="Skip subtitle extraction, always use ASR")] = False,
@@ -55,8 +56,16 @@ def process(
 
     With AI summary (requires API key):
       kd process "https://youtube.com/watch?v=xxx" --language zh
+
+    Use a named summary style:
+      kd process "https://youtube.com/watch?v=xxx" --style investment
+      kd process "https://youtube.com/watch?v=xxx" --style podcast
+      kd process "https://youtube.com/watch?v=xxx" --style eli5
+
+    List all available styles:
+      kd styles
     """
-    asyncio.run(_process(url, language, provider, model, prompt, output, output_format,
+    asyncio.run(_process(url, language, provider, model, prompt, style, output, output_format,
                          no_subtitles, no_summary, transcriber_backend, model_size, custom_prompt or ""))
 
 
@@ -66,6 +75,7 @@ async def _process(
     provider_name: str | None,
     model_name: str | None,
     summary_prompt: str | None,
+    style: str | None,
     output: Path | None,
     output_format: str,
     no_subtitles: bool,
@@ -168,6 +178,7 @@ async def _process(
                     transcript,
                     provider,
                     custom_prompt=summary_prompt,
+                    style=style,
                     source_url=url,
                     video_title=title,
                     language=language,
@@ -215,6 +226,28 @@ def _render_output(
             console.print(Markdown(text))
         else:
             console.print(text)
+
+
+# ─── styles ──────────────────────────────────────────────────────────────────
+
+@app.command()
+def styles() -> None:
+    """List all available summary styles for --style option."""
+    table = Table(title="Available Summary Styles", show_header=True, header_style="bold cyan")
+    table.add_column("Key", style="cyan", width=12)
+    table.add_column("", width=3)
+    table.add_column("Name", width=16)
+    table.add_column("Description")
+
+    for key, s in PROMPT_STYLES.items():
+        table.add_row(key, s.emoji, s.label, s.description)
+
+    console.print()
+    console.print(table)
+    console.print()
+    console.print("Usage: [cyan]kd process <url> --style [bold]<key>[/bold][/cyan]")
+    console.print("Example: [dim]kd process \"https://youtube.com/watch?v=xxx\" --style investment[/dim]")
+    console.print()
 
 
 # ─── subtitles ───────────────────────────────────────────────────────────────

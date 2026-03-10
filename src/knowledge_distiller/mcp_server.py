@@ -17,7 +17,7 @@ from mcp.types import (
 from . import config, downloader, subtitle_extractor, transcriber
 from .models import ProcessingStatus, ArticleSummary
 from .providers import build_provider
-from .summarizer import generate_summary
+from .summarizer import generate_summary, PROMPT_STYLES
 
 # In-memory job store (keyed by job_id)
 _jobs: dict[str, ProcessingStatus] = {}
@@ -63,6 +63,15 @@ async def list_tools() -> list[Tool]:
                     "no_summary": {
                         "type": "boolean",
                         "description": "Skip AI summarization — output transcript only. No API key needed. Default false.",
+                    },
+                    "style": {
+                        "type": "string",
+                        "enum": list(PROMPT_STYLES.keys()),
+                        "description": (
+                            "Summary style preset. Options: "
+                            + " | ".join(f"{k} ({v.emoji} {v.label})" for k, v in PROMPT_STYLES.items())
+                            + ". Default: standard."
+                        ),
                     },
                 },
                 "required": ["url"],
@@ -156,6 +165,7 @@ async def _run_job(job_id: str, args: dict[str, Any]) -> None:
     model_size = args.get("model_size") or "1.7b"
     no_subtitles = args.get("no_subtitles", False)
     no_summary = args.get("no_summary", False)
+    style = args.get("style") or None
 
     provider_name = args.get("provider") or config.get("provider", "google")
     model_name = args.get("ai_model") or config.get("model")
@@ -217,6 +227,7 @@ async def _run_job(job_id: str, args: dict[str, Any]) -> None:
                 transcript,
                 provider,
                 custom_prompt=str(summary_prompt) if summary_prompt else None,
+                style=str(style) if style else None,
                 source_url=url,
                 video_title=meta.title,
                 language=str(language) if language else None,
