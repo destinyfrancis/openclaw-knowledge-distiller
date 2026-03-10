@@ -22,6 +22,7 @@ dependencies = [
     "toml>=0.10",
     "keyring>=25.0",
     "aiofiles>=23.0",
+    "qwen-asr>=0.0.6",
 ]
 
 [project.optional-dependencies]
