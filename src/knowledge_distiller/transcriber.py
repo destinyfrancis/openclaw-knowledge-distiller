@@ -7,10 +7,10 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
-# Supported Qwen3-ASR model sizes (matched to qwen3-asr-swift / mlx-community)
+# Official Qwen3-ASR HuggingFace model IDs (for qwen-asr / transformers backend)
 QWEN3_MODELS = {
-    "1.7b": "mlx-community/Qwen3-ASR-1.7B-8bit",
-    "0.6b": "mlx-community/Qwen3-ASR-0.6B-4bit",
+    "1.7b": "Qwen/Qwen3-ASR-1.7B",
+    "0.6b": "Qwen/Qwen3-ASR-0.6B",
 }
 
 WHISPER_MODELS = {

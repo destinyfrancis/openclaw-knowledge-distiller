@@ -275,19 +275,25 @@ def subtitles(
 
 # ─── transcribe ──────────────────────────────────────────────────────────────
 
-@app.command()
+@app.command("transcribe")
 def transcribe_cmd(
     url: Annotated[str, typer.Argument(help="Video URL")],
     language: Annotated[Optional[str], typer.Option("--language", "-l")] = None,
     output: Annotated[Optional[Path], typer.Option("--output", "-o")] = None,
-    backend: Annotated[str, typer.Option("--backend")] = "mlx-whisper",
+    backend: Annotated[str, typer.Option("--backend")] = "qwen3-asr",
+    model_size: Annotated[str, typer.Option("--model-size")] = "1.7b",
+    asr_prompt: Annotated[Optional[str], typer.Option("--asr-prompt")] = None,
+    no_subtitles: Annotated[bool, typer.Option("--no-subtitles")] = False,
 ) -> None:
-    """Download audio and transcribe only (no summarization)."""
-    typer.echo("transcribe command not yet implemented — use 'process' instead")
-    raise typer.Exit(1)
+    """Download audio and transcribe only (no summarization, no API key needed)."""
+    asyncio.run(_process(
+        url=url, language=language, provider_name=None, model_name=None,
+        summary_prompt=None, style=None, output=output, output_format="text",
+        no_subtitles=no_subtitles, no_summary=True,
+        transcriber_backend=backend, model_size=model_size,
+        asr_custom_prompt=asr_prompt or "",
+    ))
 
-
-transcribe_cmd.name = "transcribe"  # type: ignore[attr-defined]
 
 
 # ─── config ──────────────────────────────────────────────────────────────────
