@@ -1,10 +1,10 @@
 # Open CLAW Knowledge Distiller 🦞📚
-### 龍蝦知識蒸餾器
+### 龙虾知识蒸馏器 · 龍蝦知識蒸餾器
 
-**English** · [繁體中文](#繁體中文)
+**English** · [繁體中文](#繁體中文) · [简体中文](#简体中文)
 
 > Turn YouTube/Bilibili videos into structured knowledge articles in seconds — locally, for free.
-> 秒速將 YouTube/Bilibili 影片轉化為結構化知識文章 — 本地運行，完全免費。
+> 秒速将 YouTube/Bilibili 视频转化为结构化知识文章 — 本地运行，完全免费。
 
 ---
 
@@ -400,6 +400,210 @@ Agent → get_result(job_id="a1b2c3d4", format="summary")
 - macOS Apple Silicon（M1/M2/M3/M4）— Qwen3-ASR MLX 本地推理必需
 - `ffmpeg`：`brew install ffmpeg`
 - `qwen-asr`：`pip install qwen-asr`
+
+---
+
+---
+
+## 简体中文
+
+[回到英文](#english) · [回到繁體中文](#繁體中文)
+
+### 什么是龙虾知识蒸馏器？
+
+**Open CLAW Knowledge Distiller**（龙虾知识蒸馏器，`kd`）是一款专为 Open CLAW AI 智能体生态系统设计的开源命令行工具和 MCP 服务器。它能自动将 YouTube 和 Bilibili 视频转化为结构化知识文章，完全本地运行，无需任何云端费用。
+
+**工作流程：**
+1. 若视频有字幕 → 直接提取（最快，无需转录）
+2. 若无字幕 → 下载音频，用 **Qwen3-ASR MLX** 在本地转录（Apple 芯片，无需 API 密钥）
+3. 将转录文本和风格提示词返回给 Open CLAW，由智能体自行完成摘要生成
+
+**核心设计理念：** `kd` 只负责下载和转录这两件重活，摘要生成交给龙虾自己的 AI 来完成——无需额外的 AI API 密钥。
+
+---
+
+### 主要功能
+
+| 功能 | 说明 |
+|------|------|
+| 🎙️ **本地 ASR** | Qwen3-ASR MLX 完全在设备上运行（Apple 芯片），无 API 费用，永久免费 |
+| 📝 **智能字幕检测** | 自动检测并提取现有字幕，有字幕直接跳过 ASR，速度更快 |
+| 🤖 **智能体摘要** | 返回转录文本和提示词，由 Open CLAW 自身 AI 完成摘要，无需额外 API 密钥 |
+| 🎨 **8 种摘要风格** | 标准、学术、行动清单、新闻速报、投资分析、播客速览、深入浅出、极简子弹 |
+| 🔌 **MCP 服务器** | 可从 Claude Code、Open CLAW 或任何兼容 MCP 的 AI 智能体连接 |
+| 🌏 **多语言支持** | 粤语、普通话、英语、日语、韩语及 50+ 种语言 |
+| ⚡ **零 API 密钥模式** | `--no-summary`：纯本地转录，无需任何外部服务 |
+
+---
+
+### 安装
+
+```bash
+# 第一步：安装系统依赖
+brew install ffmpeg          # 音频提取工具
+
+# 第二步：安装 kd（自动包含 qwen-asr）
+git clone https://github.com/destinyfrancis/openclaw-knowledge-distiller.git
+cd openclaw-knowledge-distiller
+pip install -e .
+# 或使用 uv（推荐）：
+uv sync
+```
+
+> **注意：** Qwen3-ASR 模型会在首次使用时自动从 Hugging Face 下载（约 1-2 GB），无需手动操作。
+
+---
+
+### 快速上手
+
+```bash
+# ── 零 API 密钥，纯本地转录 ─────────────────────────────────────
+# 直接转录，输出文本
+kd process "https://www.bilibili.com/video/BV..." --no-summary
+
+# 指定普通话
+kd process "https://www.bilibili.com/video/BV..." \
+  --language zh \
+  --no-summary
+
+# 指定粤语（广东话）
+kd process "https://youtube.com/watch?v=..." \
+  --language yue \
+  --asr-prompt "这是粤语口语对话，请保留原有发音特色" \
+  --no-summary
+
+# ── 配置 AI 摘要（可选，需要 API 密钥）───────────────────────────
+kd config set api-key "AIzaSy..."       # 设置 Google Gemini（默认）
+kd process "https://youtube.com/watch?v=..."
+
+# 保存为 Markdown 文件
+kd process "https://youtube.com/watch?v=..." --output 笔记.md
+
+# ── 选择摘要风格 ───────────────────────────────────────────────────
+kd process "https://youtube.com/watch?v=..." --style investment   # 投资分析
+kd process "https://youtube.com/watch?v=..." --style academic     # 学术笔记
+kd process "https://youtube.com/watch?v=..." --style actions      # 行动清单
+kd process "https://youtube.com/watch?v=..." --style podcast      # 播客速览
+kd process "https://youtube.com/watch?v=..." --style eli5         # 深入浅出
+kd process "https://youtube.com/watch?v=..." --style bullets      # 极简子弹
+
+# 查看所有可用风格
+kd styles
+```
+
+---
+
+### 8 种摘要风格
+
+使用 `kd styles` 查看完整列表，通过 `--style <key>` 选择：
+
+| Key | | 名称 | 最适合 |
+|-----|-|------|--------|
+| `standard` | 📋 | 标准摘要 | 一般视频（默认） |
+| `academic` | 🎓 | 学术笔记 | 学术演讲、研究报告、学术会议 |
+| `actions` | ✅ | 行动清单 | 教程、操作指南、步骤说明 |
+| `news` | 📰 | 新闻速报 | 采访、时事评论、新闻报道 |
+| `investment` | 📈 | 投资分析 | 财经、股市、加密货币、宏观经济 |
+| `podcast` | 🎙️ | 播客速览 | 对话节目、访谈、脱口秀 |
+| `eli5` | 🧒 | 深入浅出 | 科技、科学、复杂专业主题 |
+| `bullets` | ⚡ | 极简子弹 | 快速浏览、会议记录、备忘 |
+
+---
+
+### CLI 参考
+
+#### `kd process <url>`
+
+完整流程：检测字幕 → 转录（如需）→ 生成摘要。
+
+| 参数 | 默认值 | 说明 |
+|------|--------|------|
+| `--language`, `-l` | 自动检测 | 语言代码：`zh`、`yue`（粤语）、`en`、`ja`、`ko`… |
+| `--style`, `-s` | `standard` | 摘要风格（运行 `kd styles` 查看全部） |
+| `--provider`, `-p` | `google` | AI 提供商：`google` \| `openai` \| `anthropic` |
+| `--model`, `-m` | 提供商默认 | AI 模型名称（如 `gemini-2.5-flash`） |
+| `--prompt` | — | 自定义摘要提示词（覆盖 `--style`） |
+| `--output`, `-o` | 标准输出 | 输出文件路径 |
+| `--format`, `-f` | `markdown` | 输出格式：`markdown` \| `json` \| `text` |
+| `--no-subtitles` | false | 跳过字幕检测，强制使用 ASR |
+| `--no-summary` | false | 纯转录模式，无需 AI，无需 API 密钥 |
+| `--transcriber` | `qwen3-asr` | ASR 引擎：`qwen3-asr` \| `mlx-whisper` |
+| `--model-size` | `1.7b` | Qwen3-ASR 模型大小：`1.7b`（高精度）\| `0.6b`（更快） |
+| `--asr-prompt` | — | ASR 上下文提示（如方言特征、专业领域等） |
+
+#### `kd styles`
+
+列出所有内置摘要风格及其提示词。
+
+#### `kd subtitles <url>`
+
+仅提取字幕，不进行 ASR 或 AI 摘要。
+
+#### `kd config set <key> <value>`
+
+| Key | 示例 |
+|-----|------|
+| `api-key` | `AIzaSy...` |
+| `provider` | `google`, `openai`, `anthropic` |
+| `model` | `gemini-2.5-flash` |
+| `language` | `zh` |
+| `transcriber` | `qwen3-asr` |
+
+---
+
+### MCP 服务器配置（Open CLAW / Claude Code）
+
+#### 推荐工作流程（龙虾自行摘要）
+
+在 `~/.claude.json` 中添加：
+
+```json
+{
+  "mcpServers": {
+    "openclaw-knowledge-distiller": {
+      "command": "kd",
+      "args": ["mcp-server"]
+    }
+  }
+}
+```
+
+> **无需配置 API 密钥！** 龙虾使用自身 AI 能力完成摘要。
+
+#### MCP 工具说明
+
+| 工具 | 说明 |
+|------|------|
+| `transcribe_url` ⭐ | **推荐**：返回转录文本和摘要提示词，由 Open CLAW 自行完成摘要 |
+| `list_styles` | 获取所有摘要风格的完整提示词 |
+| `process_url` | 完整流程（需配置外部 AI API 密钥） |
+| `get_status` | 查询 process_url 任务进度 |
+| `get_result` | 获取已完成任务的结果 |
+| `list_jobs` | 列出所有任务 |
+
+#### 典型 Open CLAW 工作流程
+
+```
+# 第一步：获取转录和提示词
+龙虾 → transcribe_url(url="https://www.bilibili.com/video/BV...", style="investment", language="zh")
+     ← {
+          "transcript": "今天我们来聊一下...",
+          "suggested_prompt": "你是一位资深投资分析师...",
+          "transcript_source": "qwen3-asr"  // 或 "subtitles"
+        }
+
+# 第二步：龙虾用自己的 AI + suggested_prompt 生成结构化摘要
+# 无需任何额外 API 调用，零额外成本
+```
+
+---
+
+### 系统要求
+
+- Python 3.11+
+- macOS Apple 芯片（M1/M2/M3/M4）— Qwen3-ASR MLX 本地推理必需
+- `ffmpeg`：`brew install ffmpeg`
+- Qwen3-ASR 模型会在首次使用时**自动下载**（约 1-2 GB）
 
 ---
 
