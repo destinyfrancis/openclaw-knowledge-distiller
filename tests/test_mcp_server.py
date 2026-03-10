@@ -12,6 +12,7 @@ from knowledge_distiller.mcp_server import (
     _handle_get_status,
     _handle_list_jobs,
     _jobs,
+    _validate_url,
 )
 from knowledge_distiller.models import ArticleSummary, ProcessingStatus
 
@@ -115,6 +116,35 @@ def test_list_jobs_with_entries():
     assert len(data) == 2
     ids = {j["job_id"] for j in data}
     assert ids == {"j1", "j2"}
+
+
+# ─── _validate_url ───────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("url", [
+    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    "https://youtu.be/dQw4w9WgXcQ",
+    "https://yt.be/dQw4w9WgXcQ",
+    "https://www.bilibili.com/video/BV1xx411c7XE",
+    "https://b23.tv/abc123",
+    "https://www.facebook.com/videos/123456789",
+    "https://www.facebook.com/watch?v=123456789",
+    "https://m.facebook.com/watch?v=123456789",
+    "https://fb.watch/abc123def/",
+])
+def test_validate_url_allowed(url):
+    _validate_url(url)  # Should not raise
+
+
+@pytest.mark.parametrize("url", [
+    "https://twitter.com/user/status/123",
+    "https://tiktok.com/@user/video/123",
+    "https://evil.com/hack",
+    "ftp://youtube.com/video",
+    "file:///etc/passwd",
+])
+def test_validate_url_rejected(url):
+    with pytest.raises(ValueError):
+        _validate_url(url)
 
 
 # ─── configure ───────────────────────────────────────────────────────────────

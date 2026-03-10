@@ -49,19 +49,22 @@ _jobs: _BoundedJobStore = _BoundedJobStore()
 
 # URL allowlist — C3: prevent SSRF via yt-dlp's broad extractor support
 _ALLOWED_HOSTS = re.compile(
-    r"^(www\.)?(youtube\.com|youtu\.be|yt\.be|bilibili\.com|b23\.tv)$",
+    r"^(www\.|m\.)?(youtube\.com|youtu\.be|yt\.be"
+    r"|bilibili\.com|b23\.tv"
+    r"|facebook\.com|fb\.watch)$",
     re.IGNORECASE,
 )
 
 def _validate_url(url: str) -> None:
-    """Raise ValueError if url is not an allowed YouTube/Bilibili URL."""
+    """Raise ValueError if url is not an allowed YouTube/Bilibili/Facebook URL."""
     from urllib.parse import urlparse
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"Only http/https URLs are allowed (got: {parsed.scheme!r})")
     if not parsed.netloc or not _ALLOWED_HOSTS.match(parsed.netloc):
         raise ValueError(
-            f"Unsupported platform: {parsed.netloc!r}. Only YouTube and Bilibili are supported."
+            f"Unsupported platform: {parsed.netloc!r}. "
+            "Only YouTube, Bilibili, and Facebook are supported."
         )
 
 server = Server("openclaw-knowledge-distiller")
@@ -77,9 +80,9 @@ async def list_tools() -> list[Tool]:
             name="transcribe_url",
             description=(
                 "**RECOMMENDED for Open CLAW agents.** "
-                "Transcribe a YouTube or Bilibili video — returns the raw transcript and a "
-                "ready-to-use summarization prompt. The agent (you) then performs the summarization "
-                "using your own AI capabilities. No external AI API key needed.\n\n"
+                "Transcribe a YouTube, Bilibili, or Facebook video — returns the raw transcript "
+                "and a ready-to-use summarization prompt. The agent (you) then performs the "
+                "summarization using your own AI capabilities. No external AI API key needed.\n\n"
                 "Steps: (1) extract subtitles if available (fastest), "
                 "(2) otherwise download audio and transcribe locally with Qwen3-ASR MLX.\n\n"
                 "After receiving the result, use the `suggested_prompt` as your system instruction "
@@ -88,7 +91,7 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "url": {"type": "string", "description": "YouTube or Bilibili URL"},
+                    "url": {"type": "string", "description": "YouTube, Bilibili, or Facebook URL"},
                     "language": {
                         "type": "string",
                         "description": "Language code: 'zh' (Mandarin), 'yue' (粵語), 'en', 'ja', 'ko', etc. Auto-detect if omitted.",
@@ -121,7 +124,8 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="process_url",
             description=(
-                "Submit a YouTube or Bilibili URL for full processing including AI summarization. "
+                "Submit a YouTube, Bilibili, or Facebook URL for full processing "
+                "including AI summarization. "
                 "Use this when an external AI API key is configured and you want kd to handle "
                 "everything end-to-end. Returns a job_id to poll.\n\n"
                 "For Open CLAW agents, prefer `transcribe_url` instead — it returns the transcript "
@@ -130,7 +134,7 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "url": {"type": "string", "description": "YouTube or Bilibili URL"},
+                    "url": {"type": "string", "description": "YouTube, Bilibili, or Facebook URL"},
                     "language": {
                         "type": "string",
                         "description": "Language code: 'zh', 'yue', 'en', 'ja', 'ko', etc.",

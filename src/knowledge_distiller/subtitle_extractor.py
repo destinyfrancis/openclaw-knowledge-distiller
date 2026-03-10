@@ -1,4 +1,4 @@
-"""Extract subtitles from YouTube/Bilibili videos, preferring manual over auto-generated."""
+"""Extract subtitles from YouTube/Bilibili/Facebook videos, preferring manual over auto-generated."""
 
 from __future__ import annotations
 

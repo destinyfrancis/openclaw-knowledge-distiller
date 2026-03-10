@@ -1,4 +1,4 @@
-"""yt-dlp wrapper for downloading audio from YouTube and Bilibili."""
+"""yt-dlp wrapper for downloading audio from YouTube, Bilibili, and Facebook."""
 
 from __future__ import annotations
 
@@ -14,8 +14,10 @@ def detect_platform(url: str) -> str:
     host = urlparse(url).netloc.lower()
     if any(x in host for x in ("youtube.com", "youtu.be", "yt.be")):
         return "youtube"
-    if "bilibili.com" in host:
+    if "bilibili.com" in host or "b23.tv" in host:
         return "bilibili"
+    if "facebook.com" in host or "fb.watch" in host:
+        return "facebook"
     return "unknown"
 
 
