@@ -44,16 +44,22 @@ Open CLAW Knowledge Distiller（**龍蝦知識蒸餾器**，`kd`）is an open-so
 
 **Prerequisites:**
 ```bash
-brew install ffmpeg          # audio extraction
-pip install qwen-asr         # local Qwen3-ASR (Apple Silicon)
+brew install ffmpeg    # audio extraction
 ```
 
-**Install from source:**
+**Install:**
+```bash
+pip install openclaw-knowledge-distiller
+# or with uv:
+uv add openclaw-knowledge-distiller
+```
+
+> Qwen3-ASR model (~1-2 GB) downloads automatically from Hugging Face on first use.
+
+**Install from source (for development):**
 ```bash
 git clone https://github.com/destinyfrancis/openclaw-knowledge-distiller.git
 cd openclaw-knowledge-distiller
-pip install -e .
-# or with uv:
 uv sync
 ```
 
@@ -272,15 +278,19 @@ export KD_LANGUAGE=zh
 ### 安裝
 
 ```bash
-# 安裝依賴
-brew install ffmpeg
-pip install qwen-asr
+brew install ffmpeg   # 音頻提取工具
 
-# 從 GitHub 安裝
+pip install openclaw-knowledge-distiller
+# 或使用 uv：
+uv add openclaw-knowledge-distiller
+```
+
+> Qwen3-ASR 模型（約 1-2 GB）首次使用時自動從 Hugging Face 下載，無需手動操作。
+
+**從原始碼安裝（開發用）：**
+```bash
 git clone https://github.com/destinyfrancis/openclaw-knowledge-distiller.git
 cd openclaw-knowledge-distiller
-pip install -e .
-# 或使用 uv：
 uv sync
 ```
 
@@ -439,18 +449,14 @@ Agent → get_result(job_id="a1b2c3d4", format="summary")
 ### 安装
 
 ```bash
-# 第一步：安装系统依赖
-brew install ffmpeg          # 音频提取工具
+brew install ffmpeg   # 音频提取工具
 
-# 第二步：安装 kd（自动包含 qwen-asr）
-git clone https://github.com/destinyfrancis/openclaw-knowledge-distiller.git
-cd openclaw-knowledge-distiller
-pip install -e .
+pip install openclaw-knowledge-distiller
 # 或使用 uv（推荐）：
-uv sync
+uv add openclaw-knowledge-distiller
 ```
 
-> **注意：** Qwen3-ASR 模型会在首次使用时自动从 Hugging Face 下载（约 1-2 GB），无需手动操作。
+> Qwen3-ASR 模型（约 1-2 GB）首次使用时自动从 Hugging Face 下载，无需手动操作。
 
 ---
 
