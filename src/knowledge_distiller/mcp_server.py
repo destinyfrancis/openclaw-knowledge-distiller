@@ -21,9 +21,13 @@ import json
 import logging
 import re
 import shutil
+import subprocess
+import tempfile
 import uuid
 from collections import OrderedDict
+from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -55,9 +59,27 @@ _ALLOWED_HOSTS = re.compile(
     re.IGNORECASE,
 )
 
+_LOCAL_MEDIA_EXTENSIONS = {
+    ".aac",
+    ".aiff",
+    ".flac",
+    ".m4a",
+    ".m4v",
+    ".mkv",
+    ".mov",
+    ".mp3",
+    ".mp4",
+    ".mpeg",
+    ".mpg",
+    ".ogg",
+    ".opus",
+    ".wav",
+    ".webm",
+    ".wma",
+}
+
 def _validate_url(url: str) -> None:
     """Raise ValueError if url is not an allowed YouTube/Bilibili/Facebook URL."""
-    from urllib.parse import urlparse
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"Only http/https URLs are allowed (got: {parsed.scheme!r})")
@@ -66,6 +88,65 @@ def _validate_url(url: str) -> None:
             f"Unsupported platform: {parsed.netloc!r}. "
             "Only YouTube, Bilibili, and Facebook are supported."
         )
+
+def _resolve_local_media_path(path_or_uri: str) -> Path:
+    """Return a validated local media file path from a path or file:// URI."""
+    if not isinstance(path_or_uri, str) or not path_or_uri.strip():
+        raise ValueError("path must be a non-empty string")
+
+    parsed = urlparse(path_or_uri)
+    if parsed.scheme and parsed.scheme != "file":
+        raise ValueError("Only local file paths or file:// URIs are allowed")
+
+    if parsed.scheme == "file":
+        if parsed.netloc and parsed.netloc not in ("localhost", "127.0.0.1"):
+            raise ValueError(f"Remote file hosts are not supported: {parsed.netloc!r}")
+        path = Path(unquote(parsed.path))
+    else:
+        path = Path(path_or_uri).expanduser()
+
+    path = path.resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Local media file not found: {path}")
+    if not path.is_file():
+        raise ValueError(f"Local media path is not a file: {path}")
+    if path.suffix.lower() not in _LOCAL_MEDIA_EXTENSIONS:
+        raise ValueError(
+            f"Unsupported local media extension: {path.suffix or '(none)'}. "
+            f"Supported: {', '.join(sorted(_LOCAL_MEDIA_EXTENSIONS))}"
+        )
+    return path
+
+def _extract_local_audio(media_path: Path) -> tuple[Path, Path]:
+    """Extract a local media file's audio to WAV. Returns (audio_path, temp_dir)."""
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError("ffmpeg not found. Install: brew install ffmpeg")
+
+    temp_dir = Path(tempfile.mkdtemp(prefix="kd_local_audio_"))
+    audio_path = temp_dir / "audio.wav"
+    result = subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(media_path),
+            "-vn",
+            "-ar",
+            "16000",
+            "-ac",
+            "1",
+            "-f",
+            "wav",
+            str(audio_path),
+        ],
+        capture_output=True,
+        timeout=300,
+    )
+    if result.returncode != 0:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        stderr = result.stderr.decode(errors="replace")[:500]
+        raise RuntimeError(f"ffmpeg failed extracting audio from local media: {stderr}")
+    return audio_path, temp_dir
 
 server = Server("openclaw-knowledge-distiller")
 
@@ -94,7 +175,10 @@ async def list_tools() -> list[Tool]:
                     "url": {"type": "string", "description": "YouTube, Bilibili, or Facebook URL"},
                     "language": {
                         "type": "string",
-                        "description": "Language code: 'zh' (Mandarin), 'yue' (粵語), 'en', 'ja', 'ko', etc. Auto-detect if omitted.",
+                        "description": (
+                            "Language code: 'zh' (Mandarin), 'yue' (粵語), 'en', "
+                            "'ja', 'ko', etc. Auto-detect if omitted."
+                        ),
                     },
                     "style": {
                         "type": "string",
@@ -106,19 +190,81 @@ async def list_tools() -> list[Tool]:
                     },
                     "asr_prompt": {
                         "type": "string",
-                        "description": "Context hint for Qwen3-ASR (e.g. '這是粵語口語對話，請保留懶音'). Optional.",
+                        "description": (
+                            "Context hint for Qwen3-ASR "
+                            "(e.g. '這是粵語口語對話，請保留懶音'). Optional."
+                        ),
                     },
                     "model_size": {
                         "type": "string",
                         "enum": ["1.7b", "0.6b"],
-                        "description": "Qwen3-ASR model size. '1.7b' = higher accuracy (default), '0.6b' = faster.",
+                        "description": (
+                            "Qwen3-ASR model size. '1.7b' = higher accuracy "
+                            "(default), '0.6b' = faster."
+                        ),
                     },
                     "no_subtitles": {
                         "type": "boolean",
-                        "description": "Skip subtitle extraction, always use Qwen3-ASR. Default false.",
+                        "description": (
+                            "Skip subtitle extraction, always use Qwen3-ASR. Default false."
+                        ),
                     },
                 },
                 "required": ["url"],
+            },
+        ),
+        Tool(
+            name="transcribe_file",
+            description=(
+                "**For local media files.** Transcribe a local video or audio file from this "
+                "machine and return the raw transcript plus a ready-to-use summarization prompt. "
+                "Accepts absolute/relative paths or file:// URIs. The agent (you) then performs "
+                "summarization using your own AI capabilities. No external AI API key needed.\n\n"
+                "The server extracts audio with ffmpeg, then transcribes locally with "
+                "Qwen3-ASR MLX or the configured transcription backend."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": (
+                            "Local video/audio file path or file:// URI, "
+                            "e.g. /Users/me/video.mp4"
+                        ),
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": (
+                            "Language code: 'zh' (Mandarin), 'yue' (粵語), 'en', "
+                            "'ja', 'ko', etc. Auto-detect if omitted."
+                        ),
+                    },
+                    "style": {
+                        "type": "string",
+                        "enum": list(PROMPT_STYLES.keys()),
+                        "description": (
+                            "Summary style that determines the `suggested_prompt` returned. "
+                            f"Options: {style_list}. Default: standard."
+                        ),
+                    },
+                    "asr_prompt": {
+                        "type": "string",
+                        "description": (
+                            "Context hint for Qwen3-ASR "
+                            "(e.g. '這是粵語口語對話，請保留懶音'). Optional."
+                        ),
+                    },
+                    "model_size": {
+                        "type": "string",
+                        "enum": ["1.7b", "0.6b"],
+                        "description": (
+                            "Qwen3-ASR model size. '1.7b' = higher accuracy "
+                            "(default), '0.6b' = faster."
+                        ),
+                    },
+                },
+                "required": ["path"],
             },
         ),
         Tool(
@@ -144,16 +290,28 @@ async def list_tools() -> list[Tool]:
                         "enum": list(PROMPT_STYLES.keys()),
                         "description": f"Summary style. Options: {style_list}. Default: standard.",
                     },
-                    "prompt": {"type": "string", "description": "Custom AI summarization prompt (overrides style)."},
-                    "asr_prompt": {"type": "string", "description": "Context hint for Qwen3-ASR. Optional."},
+                    "prompt": {
+                        "type": "string",
+                        "description": "Custom AI summarization prompt (overrides style).",
+                    },
+                    "asr_prompt": {
+                        "type": "string",
+                        "description": "Context hint for Qwen3-ASR. Optional.",
+                    },
                     "model_size": {
                         "type": "string",
                         "enum": ["1.7b", "0.6b"],
                         "description": "Qwen3-ASR model size. '1.7b' (default) or '0.6b' (faster).",
                     },
-                    "provider": {"type": "string", "description": "AI provider for summary: google|openai|anthropic."},
+                    "provider": {
+                        "type": "string",
+                        "description": "AI provider for summary: google|openai|anthropic.",
+                    },
                     "ai_model": {"type": "string", "description": "AI model name for summary."},
-                    "no_subtitles": {"type": "boolean", "description": "Skip subtitle extraction. Default false."},
+                    "no_subtitles": {
+                        "type": "boolean",
+                        "description": "Skip subtitle extraction. Default false.",
+                    },
                     "no_summary": {
                         "type": "boolean",
                         "description": "Skip AI summarization — transcript only. Default false.",
@@ -222,9 +380,15 @@ async def list_tools() -> list[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "provider": {"type": "string", "description": "AI provider: google|openai|anthropic"},
+                    "provider": {
+                        "type": "string",
+                        "description": "AI provider: google|openai|anthropic",
+                    },
                     "model": {"type": "string", "description": "AI model name"},
-                    "default_prompt": {"type": "string", "description": "Default summarization prompt"},
+                    "default_prompt": {
+                        "type": "string",
+                        "description": "Default summarization prompt",
+                    },
                     "language": {"type": "string", "description": "Default language code"},
                 },
             },
@@ -239,6 +403,8 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     match name:
         case "transcribe_url":
             return await _handle_transcribe_url(arguments)
+        case "transcribe_file":
+            return await _handle_transcribe_file(arguments)
         case "process_url":
             return await _handle_process_url(arguments)
         case "get_status":
@@ -340,6 +506,65 @@ async def _handle_transcribe_url(args: dict[str, Any]) -> list[TextContent]:
             shutil.rmtree(audio_dir, ignore_errors=True)
 
 
+# ─── transcribe_file: local media files ───────────────────────────────────────
+
+async def _handle_transcribe_file(args: dict[str, Any]) -> list[TextContent]:
+    """
+    Transcribe a local video/audio file and return transcript + summarization prompt.
+    The calling agent handles summarization using its own AI.
+    """
+    path_arg = args["path"]
+    language = args.get("language") or config.get("language")
+    asr_prompt = args.get("asr_prompt") or ""
+    model_size = args.get("model_size") or "1.7b"
+    style_key = args.get("style") or "standard"
+    style = PROMPT_STYLES.get(style_key, PROMPT_STYLES["standard"])
+
+    audio_dir = None
+
+    try:
+        media_path = _resolve_local_media_path(path_arg)
+        audio_path, audio_dir = await asyncio.to_thread(_extract_local_audio, media_path)
+        backend = str(config.get("transcriber", "qwen3-asr"))
+        transcript = await asyncio.to_thread(
+            transcriber.transcribe,
+            audio_path,
+            str(language) if language else None,
+            backend,
+            str(model_size),
+            str(asr_prompt),
+            None,
+        )
+
+        data = {
+            "status": "ready",
+            "title": media_path.stem,
+            "path": str(media_path),
+            "language": language or "auto-detected",
+            "transcript_source": backend,
+            "transcript": transcript or "",
+            "style": style_key,
+            "style_label": f"{style.emoji} {style.label}",
+            "suggested_prompt": style.system_prompt,
+            "instructions": (
+                "Use `suggested_prompt` as your system instruction and `transcript` as the user "
+                "message to generate a structured summary. Output JSON with keys: "
+                "one_sentence, key_points (list), full_transcript."
+            ),
+        }
+        return [TextContent(type="text", text=json.dumps(data, ensure_ascii=False, indent=2))]
+
+    except Exception as e:
+        logger.exception("transcribe_file failed for path=%s", path_arg)
+        return [TextContent(type="text", text=json.dumps({
+            "status": "error",
+            "error": f"Transcription failed: {type(e).__name__}: {e}",
+        }))]
+    finally:
+        if audio_dir is not None:
+            shutil.rmtree(audio_dir, ignore_errors=True)
+
+
 # ─── process_url: async job queue (external AI summarization) ──────────────────
 
 async def _handle_process_url(args: dict[str, Any]) -> list[TextContent]:
@@ -381,7 +606,9 @@ async def _run_job(job_id: str, args: dict[str, Any]) -> None:
 
     if not no_summary and not api_key:
         no_summary = True
-        job.phase_message = "No API key — transcript-only mode (use transcribe_url for agent summarization)"
+        job.phase_message = (
+            "No API key — transcript-only mode (use transcribe_url for agent summarization)"
+        )
 
     audio_dir = None  # track for cleanup
 
@@ -428,7 +655,9 @@ async def _run_job(job_id: str, args: dict[str, Any]) -> None:
             job.status = "summarizing"
             job.phase_message = "Generating summary..."
             job.progress = 0.8
-            provider = build_provider(str(provider_name), api_key, str(model_name) if model_name else None)
+            provider = build_provider(
+                str(provider_name), api_key, str(model_name) if model_name else None
+            )
             summary = await generate_summary(
                 transcript,
                 provider,
@@ -441,7 +670,10 @@ async def _run_job(job_id: str, args: dict[str, Any]) -> None:
 
         if summary is None:
             summary = ArticleSummary(
-                one_sentence="(Transcript only — summarize using your own AI with the style prompt from list_styles)",
+                one_sentence=(
+                    "(Transcript only — summarize using your own AI with the style prompt "
+                    "from list_styles)"
+                ),
                 key_points=[],
                 full_transcript=transcript,
                 source_url=url,
@@ -491,10 +723,17 @@ def _handle_get_result(args: dict[str, Any]) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps({"error": f"Job {job_id!r} not found"}))]
     job = _jobs[job_id]
     if job.status != "completed":
-        return [TextContent(type="text", text=json.dumps({"status": job.status, "error": job.error}))]
+        return [
+            TextContent(type="text", text=json.dumps({"status": job.status, "error": job.error}))
+        ]
     summary = job.result
     if summary is None:
-        return [TextContent(type="text", text=json.dumps({"error": "Job completed but result is missing"}))]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps({"error": "Job completed but result is missing"}),
+            )
+        ]
     match fmt:
         case "summary":
             data: Any = {"one_sentence": summary.one_sentence, "key_points": summary.key_points}
@@ -502,7 +741,12 @@ def _handle_get_result(args: dict[str, Any]) -> list[TextContent]:
             data = {"full_transcript": summary.full_transcript}
         case _:
             data = summary.model_dump(exclude_none=True)
-    return [TextContent(type="text", text=json.dumps(data, ensure_ascii=False, indent=2, default=str))]
+    return [
+        TextContent(
+            type="text",
+            text=json.dumps(data, ensure_ascii=False, indent=2, default=str),
+        )
+    ]
 
 
 def _handle_list_styles(args: dict[str, Any]) -> list[TextContent]:
