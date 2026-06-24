@@ -185,6 +185,8 @@ Add to `~/.claude.json`:
 
 | Tool | Description |
 |------|-------------|
+| `transcribe_url` | Recommended for agents: transcribe a YouTube/Bilibili/Facebook URL and return transcript + summary prompt |
+| `transcribe_file` | Transcribe a local video/audio file path or `file://` URI and return transcript + summary prompt |
 | `process_url` | Submit a video URL → returns `job_id`. Supports `style`, `language`, `no_summary`, `model_size`… |
 | `get_status` | Poll job progress: `status`, `progress` (0–1), `phase` message |
 | `get_result` | Get result: `format=full` \| `summary` \| `transcript` |
@@ -581,6 +583,7 @@ kd styles
 | 工具 | 说明 |
 |------|------|
 | `transcribe_url` ⭐ | **推荐**：返回转录文本和摘要提示词，由 Open CLAW 自行完成摘要 |
+| `transcribe_file` | 处理本地视频/音频文件路径或 `file://` URI，返回转录文本和摘要提示词 |
 | `list_styles` | 获取所有摘要风格的完整提示词 |
 | `process_url` | 完整流程（需配置外部 AI API 密钥） |
 | `get_status` | 查询 process_url 任务进度 |

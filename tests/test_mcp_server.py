@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+import json
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -11,7 +12,9 @@ from knowledge_distiller.mcp_server import (
     _handle_get_result,
     _handle_get_status,
     _handle_list_jobs,
+    _handle_transcribe_file,
     _jobs,
+    _resolve_local_media_path,
     _validate_url,
 )
 from knowledge_distiller.models import ArticleSummary, ProcessingStatus
@@ -145,6 +148,60 @@ def test_validate_url_allowed(url):
 def test_validate_url_rejected(url):
     with pytest.raises(ValueError):
         _validate_url(url)
+
+
+# ─── transcribe_file ─────────────────────────────────────────────────────────
+
+def test_resolve_local_media_path_accepts_path(tmp_path):
+    media = tmp_path / "clip.mp4"
+    media.write_bytes(b"fake")
+
+    assert _resolve_local_media_path(str(media)) == media.resolve()
+
+
+def test_resolve_local_media_path_accepts_file_uri(tmp_path):
+    media = tmp_path / "clip with space.mp4"
+    media.write_bytes(b"fake")
+
+    assert _resolve_local_media_path(media.as_uri()) == media.resolve()
+
+
+def test_resolve_local_media_path_rejects_unsupported_extension(tmp_path):
+    media = tmp_path / "notes.txt"
+    media.write_text("not media")
+
+    with pytest.raises(ValueError, match="Unsupported local media extension"):
+        _resolve_local_media_path(str(media))
+
+
+@pytest.mark.asyncio
+@patch("knowledge_distiller.mcp_server._extract_local_audio")
+@patch("knowledge_distiller.mcp_server.transcriber.transcribe")
+@patch("knowledge_distiller.mcp_server.config")
+async def test_handle_transcribe_file(mock_config, mock_transcribe, mock_extract_audio, tmp_path):
+    media = tmp_path / "lecture.mp4"
+    media.write_bytes(b"fake video")
+    audio = tmp_path / "audio.wav"
+    audio.write_bytes(b"fake audio")
+
+    mock_config.get.side_effect = lambda key, default=None: {
+        "language": None,
+        "transcriber": "qwen3-asr",
+    }.get(key, default)
+    mock_extract_audio.return_value = (audio, tmp_path)
+    mock_transcribe.return_value = "本地影片轉錄"
+
+    result = await _handle_transcribe_file(
+        {"path": str(media), "style": "bullets", "language": "zh"}
+    )
+    data = json.loads(result[0].text)
+
+    assert data["status"] == "ready"
+    assert data["title"] == "lecture"
+    assert data["path"] == str(media.resolve())
+    assert data["transcript"] == "本地影片轉錄"
+    assert data["transcript_source"] == "qwen3-asr"
+    assert data["style"] == "bullets"
 
 
 # ─── configure ───────────────────────────────────────────────────────────────
